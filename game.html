@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双人英语对战 · 10 题自动切换版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    min-height: 100vh; color: #333; padding: 20px;
+  }
+  .container {
+    max-width: 1000px; margin: 0 auto; background: #fff;
+    border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden; min-height: 600px;
+  }
+  .screen { display: none; padding: 30px; }
+  .screen.active { display: block; }
+  h1 { text-align: center; color: #1e3c72; font-size: 28px; margin-bottom: 10px; }
+  h2 { text-align: center; color: #2a5298; font-size: 22px; margin-bottom: 20px; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 15px; }
+
+  .start-box { text-align: center; padding: 40px 20px; }
+  .game-rules {
+    background: #f0f5ff; border-radius: 12px; padding: 20px; margin: 20px 0;
+    text-align: left; font-size: 15px; line-height: 1.9; color: #444;
+  }
+  .game-rules b { color: #1e3c72; }
+  .btn {
+    border: none; cursor: pointer; border-radius: 50px; font-size: 18px;
+    font-weight: bold; padding: 14px 40px; transition: all 0.3s; color: #fff;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    box-shadow: 0 6px 20px rgba(238,90,36,0.4);
+  }
+  .btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(238,90,36,0.5); }
+  .btn:active { transform: translateY(0); }
+  .btn-sm { font-size: 15px; padding: 10px 24px; }
+  .btn-blue { background: linear-gradient(135deg, #4facfe, #00f2fe); box-shadow: 0 6px 20px rgba(79,172,254,0.4); }
+  .btn-green { background: linear-gradient(135deg, #43e97b, #38f9d7); color:#1a5; box-shadow: 0 6px 20px rgba(67,233,123,0.4);}
+  .btn-gray { background: linear-gradient(135deg, #a8a8a8, #888); box-shadow: 0 6px 20px rgba(0,0,0,0.2);}
+
+  .name-inputs { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+  .name-inputs input {
+    padding: 12px 18px; border: 2px solid #2a5298; border-radius: 10px;
+    font-size: 16px; width: 200px; text-align: center; outline: none;
+  }
+  .name-inputs input:focus { border-color: #ff6b6b; }
+  label.p-label { display:block; font-weight:bold; color:#1e3c72; margin-bottom:5px;}
+
+  .level-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 15px; margin: 20px 0; }
+  .level-card {
+    color: #fff; border-radius: 15px; padding: 20px; text-align: center;
+    cursor: pointer; transition: all 0.3s; font-weight: bold;
+  }
+  .level-card:nth-child(1) { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+  .level-card:nth-child(2) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+  .level-card:nth-child(3) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color:#1a5; }
+  .level-card:nth-child(4) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color:#a50; }
+  .level-card:nth-child(5) { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+  .level-card:nth-child(6) { background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%); }
+  .level-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+  .level-card .lvl-name { font-size: 18px; }
+  .level-card .lvl-info { font-size: 13px; opacity: 0.95; margin-top: 5px; }
+
+  /* 对战页：左右分栏 */
+  .vs-header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #f0f5ff; border-radius: 14px; padding: 14px 24px; margin-bottom: 18px;
+  }
+  .vs-player { text-align: center; flex: 1; }
+  .vs-player .v-name { font-weight: bold; font-size: 18px; color: #1e3c72; }
+  .vs-player .v-score { font-size: 34px; font-weight: bold; color: #ff6b6b; }
+  .vs-player .v-tag { font-size: 13px; color: #888; }
+  .vs-badge {
+    font-size: 22px; font-weight: bold; color: #fff; background: linear-gradient(135deg,#ff6b6b,#f5576c);
+    padding: 8px 18px; border-radius: 30px; margin: 0 16px; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(255,107,107,0.4);
+  }
+  .vs-player.done { opacity: 0.5; }
+  .vs-player.done .v-name::after { content:" ✅ 已作答"; color:#43e97b; }
+
+  .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin-bottom: 18px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #43e97b, #38f9d7); width: 0%; transition: width 0.4s; }
+
+  .question-box { text-align: center; margin-bottom: 22px; padding: 10px; background: #fafbff; border-radius: 14px; }
+  .word-display { font-size: 46px; font-weight: bold; color: #1e3c72; margin: 8px 0; letter-spacing:1px; }
+  .phonetic { font-size: 19px; color: #888; font-style: italic; }
+  .q-label { font-size: 16px; color: #666; }
+
+  .battle-arena { display: flex; gap: 20px; align-items: stretch; }
+  .side {
+    flex: 1; border-radius: 16px; padding: 18px; border: 3px solid #e0e0e0;
+    background: #fafafa; transition: all 0.3s;
+  }
+  .side.locked { pointer-events: none; opacity: 0.45; filter: grayscale(0.6); }
+  .side.s1 { border-color: #4facfe; }
+  .side.s2 { border-color: #f5576c; }
+  .side-feedback { text-align:center; font-size:18px; font-weight:bold; margin-top:12px; min-height:26px; }
+  .side-feedback.ri { color:#43e97b; } .side-feedback.wr { color:#ff6b6b; }
+  .side-feedback.wait { color:#888; }
+
+  .options { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 14px; }
+  .option-btn {
+    padding: 14px; font-size: 17px; border: 2px solid #e0e0e0; border-radius: 10px;
+    background: #fff; cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .option-btn:hover { border-color: #2a5298; background: #eef4ff; }
+  .option-btn.correct { border-color: #43e97b; background: #d4f8e8; color:#1a8; }
+  .option-btn.wrong { border-color: #ff6b6b; background: #ffe0e0; color:#e44; }
+  .option-btn.disabled { pointer-events: none; opacity: 0.7; }
+  .side-waiting { text-align:center; font-size:16px; color:#aaa; padding:20px 0;}
+
+  .feedback { text-align: center; font-size: 20px; font-weight: bold; margin: 16px 0; min-height: 28px; }
+  .feedback.right { color: #43e97b; } .feedback.wrong { color: #ff6b6b; }
+  .game-controls { text-align: center; margin-top: 18px; }
+
+  /* 结算 */
+  .result-box { text-align: center; padding: 30px; }
+  .result-winner { font-size: 34px; font-weight: bold; color: #ff6b6b; margin: 18px 0; }
+  .result-detail { font-size: 19px; color: #444; margin: 10px 0; line-height:1.8;}
+  .final-scores { display:flex; justify-content:center; gap:40px; margin:20px 0; }
+  .final-score-card { background:#f0f5ff; border-radius:15px; padding:20px 30px; }
+  .final-score-card.win { background: linear-gradient(135deg,#43e97b,#38f9d7); }
+  .final-score-card .fn { font-weight:bold; font-size:18px; color:#1e3c72; }
+  .final-score-card .fs { font-size:38px; font-weight:bold; color:#ff6b6b; }
+  .final-score-card.win .fn { color:#1a5; } .final-score-card.win .fs { color:#fff; }
+
+  @media (max-width: 700px) {
+    .battle-arena { flex-direction: column; }
+    .word-display { font-size: 34px; }
+    .vs-badge { display:none; }
+  }
+
+  .battle-arena{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .side{min-width:0}
+  .side.locked{opacity:.85;filter:none}
+  .option-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:58px;text-align:left;color:#26364d;font-family:inherit;line-height:1.45}
+  .option-btn:disabled{cursor:default}
+  .option-btn:focus-visible,.btn:focus-visible,.level-card:focus-visible,select:focus-visible{outline:3px solid #ffab40;outline-offset:3px}
+  .option-key{display:grid;place-items:center;flex:0 0 25px;height:25px;border-radius:6px;font-size:13px;font-weight:bold;background:#edf4ff;color:#2868b2}
+  .s2 .option-key{background:#fff0f2;color:#bc4561}
+  .time-settings{margin:20px auto 26px;text-align:center}
+  .time-settings label{font-weight:bold;color:#1e3c72;margin-right:10px}
+  .time-settings select{font:inherit;padding:9px 14px;border:2px solid #bdcde4;border-radius:9px;background:white;color:#1e3c72}
+  .time-settings p{font-size:13px;color:#6e7c8e;margin-top:9px;line-height:1.7}
+  .countdown-row{display:flex;justify-content:center;align-items:center;gap:10px;margin:0 0 10px}
+  .countdown{color:#2a5298;font-size:14px;background:#edf4ff;border-radius:20px;padding:7px 16px;font-variant-numeric:tabular-nums}
+  .countdown strong{font-size:22px;display:inline-block;min-width:26px}
+  .countdown.urgent{color:#b83a3a;background:#fff0ed}
+  .time-track{height:5px;background:#e7edf8;border-radius:4px;overflow:hidden;margin:0 0 16px}
+  .time-fill{height:100%;background:#4b93d7;transform-origin:left;transition:width .1s linear}
+  .auto-hint{text-align:center;color:#627791;font-size:13px;line-height:1.7;margin:8px 0}
+  .level-card{border:0;font-family:inherit;width:100%}
+  .word-display{overflow-wrap:anywhere;font-size:clamp(24px,4vw,44px)}
+  .vs-player .v-name,.side .v-name{overflow-wrap:anywhere}
+  .vs-header .vs-badge{display:block;font-size:16px;padding:8px 14px}
+  .feedback{font-size:16px;line-height:1.6}
+  .keyboard-hint{font-size:11px;color:#71829a;font-weight:normal;margin-top:5px}
+  .player-question{text-align:center;background:#ffffffc9;border-radius:10px;padding:12px 8px;margin-top:12px;min-height:132px;display:flex;flex-direction:column;justify-content:center}
+  .player-question .word-display{font-size:clamp(22px,3.4vw,36px);letter-spacing:0;line-height:1.25;margin:4px 0;min-height:60px;display:flex;align-items:center;justify-content:center}
+  .player-question .phonetic{font-size:16px;min-height:23px;overflow-wrap:anywhere}
+  .answer-reveal{min-height:25px;text-align:center;color:#1f7657;font-size:13px;font-weight:bold;line-height:1.5;margin-top:6px;overflow-wrap:anywhere}
+  .question-box{margin-bottom:12px}.q-label{line-height:1.65}
+  @media(max-width:700px){.player-question{padding:10px 5px;min-height:133px}.player-question .word-display{font-size:clamp(20px,4.9vw,28px);min-height:76px}.player-question .phonetic{font-size:12px}.answer-reveal{font-size:12px}.q-label{font-size:13px}}
+  @media(max-width:700px){body{padding:10px}.screen{padding:18px}.start-box{padding:24px 8px}.battle-arena{gap:10px}.side{padding:10px;border-width:2px}.option-btn{padding:9px 7px;font-size:14px;gap:6px;min-height:62px}.option-key{flex-basis:20px;height:20px;font-size:11px}.vs-header{padding:10px 12px;margin-bottom:12px}.vs-player .v-name{font-size:14px}.vs-player .v-score{font-size:26px}.vs-header .vs-badge{font-size:12px;margin:0 8px;padding:7px 10px}.side-feedback{font-size:13px;line-height:1.5;min-height:40px}.level-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.level-card{padding:16px 10px}.level-card .lvl-name{font-size:15px}.final-scores{gap:12px}.final-score-card{padding:16px}.question-box{margin-bottom:14px}.time-settings p{font-size:12px}.result-box{padding:10px}.result-winner{font-size:27px}.btn{max-width:100%}}
+  @media(max-width:380px){.screen{padding:12px}.option-btn{font-size:13px}.option-key{flex-basis:18px;height:18px}.vs-header{padding:10px 6px}.vs-header .vs-badge{font-size:11px}.vs-player .v-name{font-size:12px}}
+  @media(max-width:700px){.option-btn{position:relative;display:block;padding:10px 7px 10px 30px;min-height:60px}.option-btn .option-key{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:18px;height:18px}.option-btn>span:last-child{display:block;overflow-wrap:anywhere}.player-question{min-height:108px}.player-question .word-display{min-height:54px}.keyboard-hint{display:none}.side-feedback{margin-top:9px;min-height:25px}.answer-reveal{min-height:21px}.feedback:empty{min-height:0;margin:0}.screen-game{padding-bottom:12px}}
+
+
+  .unit-settings{max-width:700px;margin:24px auto;padding:20px;border:1px solid #dbe5f5;border-radius:14px;background:#f8faff;text-align:left}
+  .unit-settings legend{font-size:17px;font-weight:bold;color:#1e3c72;padding:0 8px}
+  .unit-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;color:#5e718d;font-size:13px}
+  .unit-all{display:flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap}
+  .unit-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .unit-choice{display:flex;align-items:center;gap:10px;cursor:pointer;border:2px solid #dfe6f0;background:white;border-radius:10px;padding:15px 12px;min-width:0;transition:border-color .15s,background .15s}
+  .unit-choice:has(input:checked){border-color:#528dd1;background:#edf5ff}
+  .unit-choice input,.unit-all input{accent-color:#2864a7;flex-shrink:0;width:18px;height:18px}
+  .unit-choice strong{display:block;font-size:15px;color:#234875}
+  .unit-choice small{display:block;font-size:12px;font-weight:normal;color:#6d8199;margin-top:5px}
+  .unit-summary{color:#355e8a;font-size:13px;line-height:1.7;margin-top:14px}
+  .unit-source{font-size:12px;color:#7f8a9a;line-height:1.7;margin-top:5px}
+  .unit-error{font-size:13px;color:#b53636;margin-top:10px}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+  [hidden]{display:none!important}
+  @media(max-width:700px){.unit-settings{padding:15px 12px}.unit-heading{font-size:12px;align-items:flex-start}.unit-choices{gap:7px}.unit-choice{padding:12px 7px;gap:6px;flex-wrap:wrap}.unit-choice strong{font-size:13px}.unit-choice small{font-size:11px}.unit-settings legend{font-size:16px}.unit-summary,.unit-source{font-size:12px}}
+
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 开始页 -->
+  <div class="screen active" id="screen-start">
+    <div class="start-box">
+      <h1>⚡ 双人英语选义对战</h1>
+      <p class="subtitle">左右独立题目 · 每人 10 题 · 倒计时自动换题</p>
+      <div class="game-rules">
+        <b>📜 对战规则：</b><br>
+        1️⃣ 输入名字，<b>任意勾选第一、第二、第三单元</b>，然后选择关卡。<br>
+        2️⃣ 两人使用同一组 10 个词，但顺序不同，<b>每题看到的单词不一样</b>，从各自 4 个中文选项中选含义。<br>
+        3️⃣ <b>答对得分</b>，答对且更快者额外 +5 手速分；答错不扣分。<br>
+        4️⃣ <b>每轮 10 题</b>，每题可选 <b>5 秒 / 10 秒</b>。两人都答完或超时，自动揭晓答案，<b>1 秒后自动换题</b>；未作答得 0 分。<br>
+        5️⃣ 一关结束比总分，决出本关冠军；六关打通后公布总冠军！🏆<br>⌨️ 也可用键盘：蓝方 <b>1 / 2 / 3 / 4</b>，红方 <b>7 / 8 / 9 / 0</b>。
+      </div>
+      <button class="btn" onclick="showScreen('screen-names')">开始对战 🚀</button>
+    </div>
+  </div>
+
+  <!-- 输入姓名 -->
+  <div class="screen" id="screen-names">
+    <h1>👤 玩家与词库设置</h1>
+    <p class="subtitle">输入玩家姓名，再勾选本次对战使用的单元</p>
+    <div class="name-inputs">
+      <div>
+        <label class="p-label" for="name1">玩家 1（蓝方）</label>
+        <input type="text" id="name1" placeholder="如：小明" maxlength="8">
+      </div>
+      <div>
+        <label class="p-label" for="name2">玩家 2（红方）</label>
+        <input type="text" id="name2" placeholder="如：小红" maxlength="8">
+      </div>
+    </div>
+    <fieldset class="unit-settings">
+      <legend>选择出题单元（可多选）</legend>
+      <div class="unit-heading"><span>勾选哪几个单元，就只从哪几个单元出题</span><label class="unit-all"><input type="checkbox" id="unitSelectAll" checked>全选</label></div>
+      <div class="unit-choices">
+        <label class="unit-choice"><input type="checkbox" name="vocabUnit" value="1" id="vocabUnit1" checked><span><strong>第一单元</strong><small>37 个词条</small></span></label>
+        <label class="unit-choice"><input type="checkbox" name="vocabUnit" value="2" id="vocabUnit2" checked><span><strong>第二单元</strong><small>42 个词条</small></span></label>
+        <label class="unit-choice"><input type="checkbox" name="vocabUnit" value="3" id="vocabUnit3" checked><span><strong>第三单元</strong><small>38 个词条</small></span></label>
+      </div>
+      <p class="unit-summary" id="unitSummary" aria-live="polite">已选：第1、2、3单元 · 117 个词条</p>
+      <p class="unit-source">词库来自“单词”文件夹内的两张图片，包含单词与短语。</p>
+      <p class="unit-error" id="unitError" role="alert" hidden>请至少勾选一个单元。</p>
+    </fieldset>
+    <div class="time-settings"><label for="answerSeconds">每题限时</label><select id="answerSeconds"><option value="5">5 秒 · 快速对战</option><option value="10" selected>10 秒 · 从容思考</option></select><p>每轮固定 10 题；两人答完即结算，超时也会自动进入下一题。</p></div>
+    <div style="text-align:center;">
+      <button class="btn btn-blue" id="confirmSetup" onclick="confirmNames()">下一步：选关 🎯</button>
+    </div>
+  </div>
+
+  <!-- 选关 -->
+  <div class="screen" id="screen-levels">
+    <h1>🗺️ 选择关卡</h1>
+    <p class="subtitle" id="levelScope">每关 10 题，只从勾选的单元出题</p>
+    <div class="level-grid" id="levelGrid"></div>
+    <div style="text-align:center;">
+      <button class="btn-gray btn btn-sm" onclick="showScreen('screen-names')">← 修改名字与单元</button>
+    </div>
+  </div>
+
+  <!-- 对战页 -->
+  <div class="screen" id="screen-game">
+    <div class="vs-header">
+      <div class="vs-player" id="vp1">
+        <div class="v-name" id="vp1-name">玩家1</div>
+        <div class="v-score" id="vp1-score">0</div>
+        <div class="v-tag" id="vp1-tag">本关得分</div>
+      </div>
+      <div class="vs-badge" id="timerBadge">第 1 题</div>
+      <div class="vs-player" id="vp2">
+        <div class="v-name" id="vp2-name">玩家2</div>
+        <div class="v-score" id="vp2-score">0</div>
+        <div class="v-tag" id="vp2-tag">本关得分</div>
+      </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+    <div class="question-box">
+      <div class="q-label" id="roundCaption">两边题目不同，请选择各自单词的中文含义</div>
+    </div>
+    <div class="countdown-row"><div class="countdown" id="countdown" role="timer" aria-live="off">剩余 <strong id="secondsLeft">10</strong> 秒</div></div>
+    <div class="time-track" aria-hidden="true"><div class="time-fill" id="timeFill" style="width:100%"></div></div>
+    <div class="battle-arena">
+      <div class="side s1" id="side1">
+        <div class="v-name" id="side1-name">玩家1</div><div class="keyboard-hint">键盘：1 / 2 / 3 / 4</div>
+        <div class="player-question"><div class="word-display" id="word1">准备就绪</div><div class="phonetic" id="phone1"></div></div>
+        <div class="options" id="options1"></div>
+        <div class="side-feedback wait" id="fb1">等待作答…</div>
+        <div class="answer-reveal" id="answer1"></div>
+      </div>
+      <div class="side s2" id="side2">
+        <div class="v-name" id="side2-name">玩家2</div><div class="keyboard-hint">键盘：7 / 8 / 9 / 0</div>
+        <div class="player-question"><div class="word-display" id="word2">准备就绪</div><div class="phonetic" id="phone2"></div></div>
+        <div class="options" id="options2"></div>
+        <div class="side-feedback wait" id="fb2">等待作答…</div>
+        <div class="answer-reveal" id="answer2"></div>
+      </div>
+    </div>
+    <div class="feedback" id="roundFeedback" role="status" aria-live="polite"></div>
+    <div class="game-controls">
+      <button class="btn" id="startLevelBtn" onclick="startLevel()">开始本关 ▶️</button>
+      <p class="auto-hint" id="autoHint">每题限时作答，完成后自动切换</p>
+    </div>
+  </div>
+
+  <!-- 单关结算 -->
+  <div class="screen" id="screen-roundend">
+    <div class="result-box">
+      <h1 id="roundTitle">🎉 本关结束</h1>
+      <div class="result-winner" id="roundWinner"></div>
+      <div class="final-scores">
+        <div class="final-score-card" id="rcard1"><div class="fn" id="rname1">玩家1</div><div class="fs" id="rscore1">0</div><div class="v-tag" id="rr1"></div></div>
+        <div class="final-score-card" id="rcard2"><div class="fn" id="rname2">玩家2</div><div class="fs" id="rscore2">0</div><div class="v-tag" id="rr2"></div></div>
+      </div>
+      <p class="result-detail" id="roundDetail"></p>
+      <button class="btn btn-green" id="nextLevelBtn">下一关 ▶️</button>
+      <button class="btn-gray btn btn-sm" onclick="showScreen('screen-levels')" style="margin-left:10px;">返回选关 🏠</button>
+    </div>
+  </div>
+
+  <!-- 最终结算 -->
+  <div class="screen" id="screen-final">
+    <div class="result-box">
+      <h1>🏆 全部关卡通关！</h1>
+      <div class="result-winner" id="finalWinner"></div>
+      <p class="result-detail" id="finalDetail"></p>
+      <div class="final-scores">
+        <div class="final-score-card" id="fcard1"><div class="fn" id="fname1">玩家1</div><div class="fs" id="fscore1">0</div></div>
+        <div class="final-score-card" id="fcard2"><div class="fn" id="fname2">玩家2</div><div class="fs" id="fscore2">0</div></div>
+      </div>
+      <button class="btn" onclick="resetAll()">再来一局 🔄</button>
+      <button class="btn-gray btn btn-sm" onclick="showScreen('screen-start')" style="margin-left:10px;">回到首页 🏠</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const WORDS = [
+  {"en":"guitar","py":"/gɪˈtɑː/","cn":"吉他","unit":1,"isPhrase":false},
+  {"en":"honest","py":"/ˈɒnɪst/","cn":"诚实的","unit":1,"isPhrase":false},
+  {"en":"patient","py":"/ˈpeɪʃnt/","cn":"有耐心的","unit":1,"isPhrase":false},
+  {"en":"improve","py":"/ɪmˈpruːv/","cn":"改进；改善","unit":1,"isPhrase":false},
+  {"en":"confident","py":"/ˈkɒnfɪdənt/","cn":"自信的；有自信心的","unit":1,"isPhrase":false},
+  {"en":"courage","py":"/ˈkʌrɪdʒ/","cn":"勇气；胆量","unit":1,"isPhrase":false},
+  {"en":"friendship","py":"/ˈfrendʃɪp/","cn":"友谊；朋友关系","unit":1,"isPhrase":false},
+  {"en":"trust","py":"/trʌst/","cn":"信任；信赖","unit":1,"isPhrase":false},
+  {"en":"survey","py":"/ˈsɜːveɪ/","cn":"调查","unit":1,"isPhrase":false},
+  {"en":"personal","py":"/ˈpɜːsənl/","cn":"个性的","unit":1,"isPhrase":false},
+  {"en":"quality","py":"/ˈkwɒləti/","cn":"品质；品德","unit":1,"isPhrase":false},
+  {"en":"caring","py":"/ˈkeərɪŋ/","cn":"关心他人的；体贴人的","unit":1,"isPhrase":false},
+  {"en":"describe","py":"/dɪˈskraɪb/","cn":"描述；形容","unit":1,"isPhrase":false},
+  {"en":"appearance","py":"/əˈpɪərəns/","cn":"外貌","unit":1,"isPhrase":false},
+  {"en":"straight","py":"/streɪt/","cn":"直的","unit":1,"isPhrase":false},
+  {"en":"dark","py":"/dɑːk/","cn":"褐色的；乌黑的","unit":1,"isPhrase":false},
+  {"en":"same","py":"/seɪm/","cn":"同一的；相同的","unit":1,"isPhrase":false},
+  {"en":"basic","py":"/ˈbeɪsɪk/","cn":"基本的；基础的","unit":1,"isPhrase":false},
+  {"en":"thought","py":"/θɔːt/","cn":"想法","unit":1,"isPhrase":false},
+  {"en":"glad","py":"/glæd/","cn":"高兴的；愉快的","unit":1,"isPhrase":false},
+  {"en":"rise","py":"/raɪz/","cn":"上升","unit":1,"isPhrase":false},
+  {"en":"end","py":"/end/","cn":"结局","unit":1,"isPhrase":false},
+  {"en":"heart","py":"/hɑːt/","cn":"心","unit":1,"isPhrase":false},
+  {"en":"be good at","py":"","cn":"擅长……","unit":1,"isPhrase":true},
+  {"en":"turn to somebody for help","py":"","cn":"求助于某人","unit":1,"isPhrase":true},
+  {"en":"after school","py":"","cn":"放学后","unit":1,"isPhrase":true},
+  {"en":"be willing to do something","py":"","cn":"愿意做某事","unit":1,"isPhrase":true},
+  {"en":"medium height","py":"","cn":"中等身高","unit":1,"isPhrase":true},
+  {"en":"modern dance","py":"","cn":"现代舞","unit":1,"isPhrase":true},
+  {"en":"watch over","py":"","cn":"照管；监督","unit":1,"isPhrase":true},
+  {"en":"rise into","py":"","cn":"上升到","unit":1,"isPhrase":true},
+  {"en":"cry out","py":"","cn":"大叫；叫喊","unit":1,"isPhrase":true},
+  {"en":"cry oneself to sleep","py":"","cn":"哭着入睡","unit":1,"isPhrase":true},
+  {"en":"wake up","py":"","cn":"醒；醒来","unit":1,"isPhrase":true},
+  {"en":"come and go","py":"","cn":"来去","unit":1,"isPhrase":true},
+  {"en":"take somebody’s place","py":"","cn":"替代某人","unit":1,"isPhrase":true},
+  {"en":"come along","py":"","cn":"出现","unit":1,"isPhrase":true},
+  {"en":"geography","py":"/dʒiˈɒɡrəfi/","cn":"地理（学）","unit":2,"isPhrase":false},
+  {"en":"corner","py":"/ˈkɔːnə/","cn":"角；墙角","unit":2,"isPhrase":false},
+  {"en":"activity","py":"/ækˈtɪvəti/","cn":"活动","unit":2,"isPhrase":false},
+  {"en":"club","py":"/klʌb/","cn":"社团","unit":2,"isPhrase":false},
+  {"en":"practise","py":"/ˈpræktɪs/","cn":"练习；训练","unit":2,"isPhrase":false},
+  {"en":"solve","py":"/sɒlv/","cn":"解答","unit":2,"isPhrase":false},
+  {"en":"develop","py":"/dɪˈveləp/","cn":"培养；发展","unit":2,"isPhrase":false},
+  {"en":"skill","py":"/skɪl/","cn":"技术；技能","unit":2,"isPhrase":false},
+  {"en":"teen","py":"/tiːn/","cn":"青少年的","unit":2,"isPhrase":false},
+  {"en":"magazine","py":"/ˌmæɡəˈziːn/","cn":"杂志","unit":2,"isPhrase":false},
+  {"en":"teenager","py":"/ˈtiːneɪdʒə/","cn":"（13 至 19 岁之间的）青少年","unit":2,"isPhrase":false},
+  {"en":"greeting","py":"/ˈɡriːtɪŋ/","cn":"问候；招呼","unit":2,"isPhrase":false},
+  {"en":"grade","py":"/ɡreɪd/","cn":"年级","unit":2,"isPhrase":false},
+  {"en":"energy","py":"/ˈenədʒi/","cn":"精力；活力","unit":2,"isPhrase":false},
+  {"en":"drama","py":"/ˈdrɑːmə/","cn":"戏；剧","unit":2,"isPhrase":false},
+  {"en":"sincerely","py":"/sɪnˈsɪəli/","cn":"真诚地；诚实地","unit":2,"isPhrase":false},
+  {"en":"diary","py":"","cn":"日记；日记簿","unit":2,"isPhrase":false},
+  {"en":"project","py":"","cn":"课题","unit":2,"isPhrase":false},
+  {"en":"poster","py":"","cn":"海报","unit":2,"isPhrase":false},
+  {"en":"realize","py":"","cn":"意识到","unit":2,"isPhrase":false},
+  {"en":"luckily","py":"","cn":"幸运地；幸好","unit":2,"isPhrase":false},
+  {"en":"just","py":"","cn":"恰好","unit":2,"isPhrase":false},
+  {"en":"presentation","py":"","cn":"演示","unit":2,"isPhrase":false},
+  {"en":"mood","py":"","cn":"情绪；心情","unit":2,"isPhrase":false},
+  {"en":"mind","py":"","cn":"介意","unit":2,"isPhrase":false},
+  {"en":"pack","py":"","cn":"（把……）打包","unit":2,"isPhrase":false},
+  {"en":"celebrate","py":"","cn":"庆祝；庆贺","unit":2,"isPhrase":false},
+  {"en":"success","py":"","cn":"成功","unit":2,"isPhrase":false},
+  {"en":"rocky","py":"","cn":"困难的","unit":2,"isPhrase":false},
+  {"en":"do the dishes","py":"","cn":"洗碗","unit":2,"isPhrase":true},
+  {"en":"junior high school","py":"","cn":"初级中学","unit":2,"isPhrase":true},
+  {"en":"take part in","py":"","cn":"参与","unit":2,"isPhrase":true},
+  {"en":"look forward to","py":"","cn":"期待；盼望","unit":2,"isPhrase":true},
+  {"en":"daily life","py":"","cn":"日常生活","unit":2,"isPhrase":true},
+  {"en":"go to bed","py":"","cn":"去睡觉","unit":2,"isPhrase":true},
+  {"en":"get up","py":"","cn":"起床","unit":2,"isPhrase":true},
+  {"en":"on foot","py":"","cn":"步行","unit":2,"isPhrase":true},
+  {"en":"full of energy","py":"","cn":"充满活力","unit":2,"isPhrase":true},
+  {"en":"get … ready for","py":"","cn":"准备好……","unit":2,"isPhrase":true},
+  {"en":"put on","py":"","cn":"举办；上演","unit":2,"isPhrase":true},
+  {"en":"clean up","py":"","cn":"打扫干净","unit":2,"isPhrase":true},
+  {"en":"pick up","py":"","cn":"取（某物）","unit":2,"isPhrase":true},
+  {"en":"footprint","py":"","cn":"脚印；足迹","unit":3,"isPhrase":false},
+  {"en":"wet","py":"","cn":"潮湿的","unit":3,"isPhrase":false},
+  {"en":"deep","py":"","cn":"深的","unit":3,"isPhrase":false},
+  {"en":"sandy","py":"","cn":"铺满沙子的；含沙的","unit":3,"isPhrase":false},
+  {"en":"kick","py":"","cn":"踢；踹","unit":3,"isPhrase":false},
+  {"en":"town","py":"","cn":"镇；市镇","unit":3,"isPhrase":false},
+  {"en":"feature","py":"","cn":"特色；特征","unit":3,"isPhrase":false},
+  {"en":"south","py":"","cn":"南；南方","unit":3,"isPhrase":false},
+  {"en":"clear","py":"","cn":"晴朗的","unit":3,"isPhrase":false},
+  {"en":"loudly","py":"","cn":"喧闹地；响亮地","unit":3,"isPhrase":false},
+  {"en":"thunder","py":"","cn":"雷","unit":3,"isPhrase":false},
+  {"en":"lightning","py":"","cn":"闪电","unit":3,"isPhrase":false},
+  {"en":"fresh","py":"","cn":"新鲜的","unit":3,"isPhrase":false},
+  {"en":"gather","py":"","cn":"采集（植物、水果等）","unit":3,"isPhrase":false},
+  {"en":"peaceful","py":"","cn":"安静的；平静的","unit":3,"isPhrase":false},
+  {"en":"snake","py":"","cn":"蛇","unit":3,"isPhrase":false},
+  {"en":"through","py":"","cn":"自始至终；从头到尾","unit":3,"isPhrase":false},
+  {"en":"part","py":"","cn":"区域；地区","unit":3,"isPhrase":false},
+  {"en":"article","py":"","cn":"文章","unit":3,"isPhrase":false},
+  {"en":"reason","py":"","cn":"原因；理由","unit":3,"isPhrase":false},
+  {"en":"alive","py":"","cn":"有生气；有活力","unit":3,"isPhrase":false},
+  {"en":"sandcastle","py":"","cn":"沙堡","unit":3,"isPhrase":false},
+  {"en":"follow","py":"","cn":"按……方式发展","unit":3,"isPhrase":false},
+  {"en":"divide","py":"","cn":"（使）分开","unit":3,"isPhrase":false},
+  {"en":"decide","py":"","cn":"对……作出抉择；决定","unit":3,"isPhrase":false},
+  {"en":"crop","py":"","cn":"庄稼；作物","unit":3,"isPhrase":false},
+  {"en":"culture","py":"","cn":"文化；文明","unit":3,"isPhrase":false},
+  {"en":"local","py":"","cn":"地方的；当地的","unit":3,"isPhrase":false},
+  {"en":"tradition","py":"","cn":"传统","unit":3,"isPhrase":false},
+  {"en":"continue","py":"","cn":"持续；继续存在","unit":3,"isPhrase":false},
+  {"en":"have picnics","py":"","cn":"野餐","unit":3,"isPhrase":true},
+  {"en":"work one’s land","py":"","cn":"耕种土地","unit":3,"isPhrase":true},
+  {"en":"take a trip","py":"","cn":"去旅行","unit":3,"isPhrase":true},
+  {"en":"solar term","py":"","cn":"节气","unit":3,"isPhrase":true},
+  {"en":"in fact","py":"","cn":"事实上","unit":3,"isPhrase":true},
+  {"en":"be divided into","py":"","cn":"被划分成……","unit":3,"isPhrase":true},
+  {"en":"be based on","py":"","cn":"基于……","unit":3,"isPhrase":true},
+  {"en":"play an important part in","py":"","cn":"在……上发挥重要作用","unit":3,"isPhrase":true}
+];
+const ALL_CN = [...new Set(WORDS.map(w => w.cn))];
+
+
+// 每关固定 10 题；每题两人共用一个倒计时。
+const QUESTIONS_PER_ROUND=10;
+const REVEAL_MS=1000;
+const LEVELS=[
+  {name:"第一关·热身",num:10},
+  {name:"第二关·进阶",num:10},
+  {name:"第三关·巩固",num:10},
+  {name:"第四关·挑战",num:10},
+  {name:"第五关·比拼",num:10},
+  {name:"第六关·终极对决",num:10}
+];
+let state={
+  p1:{name:"玩家1",score:0},p2:{name:"玩家2",score:0},
+  curLevel:0,questions:[],qIndex:0,ans1:null,ans2:null,totalScores:[0,0],
+  answerSeconds:10,phase:"idle",startedAt:0,deadline:0,correctCounts:[0,0],selectedUnits:[1,2,3]
+};
+let countdownTicker=null,deadlineTimer=null,advanceTimer=null;
+const $=id=>document.getElementById(id);
+function clearTimers(){
+  clearInterval(countdownTicker);clearTimeout(deadlineTimer);clearTimeout(advanceTimer);
+  countdownTicker=deadlineTimer=advanceTimer=null;
+}
+function showScreen(id){
+  if(id!=="screen-game"){clearTimers();state.phase="idle";}
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+function shuffle(arr){
+  const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;
+}
+function selectedUnitInputs(){return [...document.querySelectorAll('input[name="vocabUnit"]:checked')].map(input=>Number(input.value));}
+function unitLabel(units){return "第"+units.join("、")+"单元";}
+function getWordPool(){return WORDS.filter(word=>state.selectedUnits.includes(word.unit));}
+function updateUnitChoices(){
+  const units=selectedUnitInputs(),valid=units.length>0;
+  const count=WORDS.filter(word=>units.includes(word.unit)).length;
+  $("unitSelectAll").checked=units.length===3;$("unitSelectAll").indeterminate=units.length>0&&units.length<3;
+  $("unitSummary").textContent=valid?"已选："+unitLabel(units)+" · "+count+" 个词条":"尚未选择单元";
+  $("unitError").hidden=valid;$("confirmSetup").disabled=!valid;
+  if(valid){try{localStorage.setItem("english-duel-units-v1",JSON.stringify(units));}catch(_){}}
+}
+function restoreUnitChoices(){
+  let units=[1,2,3];
+  try{
+    const stored=JSON.parse(localStorage.getItem("english-duel-units-v1")||"null");
+    if(Array.isArray(stored)){
+      const valid=[...new Set(stored.filter(unit=>[1,2,3].includes(unit)))];
+      if(valid.length)units=valid;
+    }
+  }catch(_){}
+  for(const input of document.querySelectorAll('input[name="vocabUnit"]'))input.checked=units.includes(Number(input.value));
+  state.selectedUnits=units.slice();updateUnitChoices();
+}
+function makeQuestion(word,pool){
+  const meanings=[...new Set(pool.map(item=>item.cn))];
+  const others=shuffle(meanings.filter(c=>c!==word.cn)).slice(0,3);
+  return {word,options:shuffle([word.cn,...others]),answer:word.cn};
+}
+function makeBattleQuestions(pool){
+  const blue=shuffle(pool).slice(0,QUESTIONS_PER_ROUND);
+  let red=shuffle(blue),attempts=0;
+  while(red.some((w,i)=>w.en===blue[i].en)&&attempts++<40)red=shuffle(blue);
+  if(red.some((w,i)=>w.en===blue[i].en)){
+    const shift=1+Math.floor(Math.random()*(blue.length-1));
+    red=blue.slice(shift).concat(blue.slice(0,shift));
+  }
+  return blue.map((word,i)=>({p1:makeQuestion(word,pool),p2:makeQuestion(red[i],pool)}));
+}
+function confirmNames(){
+  updateUnitChoices();const units=selectedUnitInputs();if(!units.length)return;
+  state.selectedUnits=units.slice();
+  state.p1.name=$("name1").value.trim()||"玩家1";state.p2.name=$("name2").value.trim()||"玩家2";
+  state.answerSeconds=$("answerSeconds").value==="5"?5:10;
+  for(const n of [1,2]){
+    const name=state["p"+n].name;
+    $("vp"+n+"-name").textContent=name;$("side"+n+"-name").textContent=name+(n===1?"（蓝方）":"（红方）");
+    $("rname"+n).textContent=name;$("fname"+n).textContent=name;
+  }
+  buildLevelGrid();showScreen("screen-levels");
+}
+function buildLevelGrid(){
+  const grid=$("levelGrid");grid.replaceChildren();
+  $("levelScope").textContent="本次词库："+unitLabel(state.selectedUnits)+" · "+getWordPool().length+" 个词条；每关每人 10 题";
+  LEVELS.forEach((lv,i)=>{
+    const card=document.createElement("button");card.type="button";card.className="level-card";
+    const name=document.createElement("div");name.className="lvl-name";name.textContent=lv.name;
+    const info=document.createElement("div");info.className="lvl-info";info.textContent=unitLabel(state.selectedUnits)+" · 10 题 · 每题 "+state.answerSeconds+" 秒";
+    card.append(name,info);card.addEventListener("click",()=>selectLevel(i));grid.append(card);
+  });
+}
+function selectLevel(idx){
+  clearTimers();state.curLevel=idx;state.p1.score=state.p2.score=0;state.correctCounts=[0,0];
+  state.questions=makeBattleQuestions(getWordPool());
+  state.qIndex=0;state.ans1=state.ans2=null;state.phase="ready";
+  showScreen("screen-game");updateHeader();
+  $("startLevelBtn").style.display="inline-block";$("roundFeedback").textContent="";$("roundFeedback").className="feedback";
+  $("roundCaption").textContent=LEVELS[idx].name+" · "+unitLabel(state.selectedUnits)+" · 每人 10 题 · 每题 "+state.answerSeconds+" 秒";
+  $("timerBadge").textContent="准备开始";$("progFill").style.width="0%";$("timeFill").style.width="100%";
+  $("countdown").classList.remove("urgent");$("secondsLeft").textContent=state.answerSeconds;
+  $("autoHint").textContent="两人都作答后自动换题；倒计时结束，未作答按 0 分结算。";
+  for(const n of [1,2]){$("options"+n).replaceChildren();$("fb"+n).textContent="准备就绪";$("fb"+n).className="side-feedback wait";$("side"+n).classList.remove("locked");$("vp"+n).classList.remove("done");$("word"+n).textContent="准备就绪";$("phone"+n).textContent="";$("answer"+n).textContent="";}
+}
+function startLevel(){if(state.phase!=="ready")return;$("startLevelBtn").style.display="none";renderQuestion();}
+function updateCountdown(){
+  if(state.phase!=="question")return;
+  const ms=Math.max(0,state.deadline-performance.now());
+  $("secondsLeft").textContent=Math.ceil(ms/1000);
+  $("timeFill").style.width=(ms/(state.answerSeconds*1000)*100)+"%";
+  $("countdown").classList.toggle("urgent",ms<=3000);
+}
+function renderQuestion(){
+  clearTimers();state.phase="question";state.ans1=state.ans2=null;
+  const pair=state.questions[state.qIndex];
+  $("roundCaption").textContent=unitLabel(state.selectedUnits)+" · 两边单词不同，答完或超时自动换题";
+  $("timerBadge").textContent="第 "+(state.qIndex+1)+" / 10 题";$("progFill").style.width=(state.qIndex/10*100)+"%";
+  $("roundFeedback").textContent="";$("roundFeedback").className="feedback";
+  $("autoHint").textContent="两人都作答后立即结算；展示答案 1 秒，再自动进入下一题。";
+  $("countdown").classList.remove("urgent");
+  for(const n of [1,2]){
+    const q=pair["p"+n];
+    $("word"+n).textContent=q.word.en;$("phone"+n).textContent=(q.word.py?q.word.py+" · ":"")+"Unit "+q.word.unit;$("answer"+n).textContent="";
+    $("side"+n).classList.remove("locked");$("vp"+n).classList.remove("done");
+    $("options"+n).replaceChildren();$("fb"+n).textContent="等待作答…";$("fb"+n).className="side-feedback wait";
+    q.options.forEach((option,index)=>{
+      const button=document.createElement("button");button.type="button";button.className="option-btn";button.dataset.choice=option;
+      const key=document.createElement("span");key.className="option-key";key.setAttribute("aria-hidden","true");key.textContent=(n===1?["1","2","3","4"]:["7","8","9","0"])[index];
+      const text=document.createElement("span");text.textContent=option;button.append(key,text);
+      button.addEventListener("click",()=>playerChoose(n,option));$("options"+n).append(button);
+    });
+  }
+  state.startedAt=performance.now();state.deadline=state.startedAt+state.answerSeconds*1000;
+  updateCountdown();countdownTicker=setInterval(updateCountdown,50);
+  deadlineTimer=setTimeout(expireQuestion,state.answerSeconds*1000);
+}
+function playerChoose(n,choice){
+  if(state.phase!=="question"||state["ans"+n])return;
+  if(performance.now()>=state.deadline){expireQuestion();return;}
+  const q=state.questions[state.qIndex]["p"+n];
+  state["ans"+n]={choice,correct:choice===q.answer,t:performance.now()-state.startedAt,timeout:false};
+  $("side"+n).classList.add("locked");$("vp"+n).classList.add("done");
+  document.querySelectorAll("#options"+n+" button").forEach(b=>b.disabled=true);
+  $("fb"+n).textContent="已作答，等待对方…";$("fb"+n).className="side-feedback wait";
+  if(state.ans1&&state.ans2)settleQuestion();
+}
+function expireQuestion(){
+  if(state.phase!=="question")return;
+  for(const n of [1,2])if(!state["ans"+n])state["ans"+n]={choice:null,correct:false,t:Infinity,timeout:true};
+  settleQuestion();
+}
+function settleQuestion(){
+  if(state.phase!=="question")return;
+  state.phase="feedback";clearTimers();
+  const pair=state.questions[state.qIndex],a1=state.ans1,a2=state.ans2;
+  let s1=a1.correct?10:0,s2=a2.correct?10:0;
+  if(a1.correct&&(!a2.correct||a1.t<a2.t))s1+=5;
+  if(a2.correct&&(!a1.correct||a2.t<a1.t))s2+=5;
+  state.p1.score+=s1;state.p2.score+=s2;state.totalScores[0]+=s1;state.totalScores[1]+=s2;
+  for(const n of [1,2]){
+    const q=pair["p"+n];
+    const answer=state["ans"+n],score=n===1?s1:s2;
+    if(answer.correct)state.correctCounts[n-1]++;
+    $("side"+n).classList.add("locked");$("vp"+n).classList.add("done");
+    document.querySelectorAll("#options"+n+" button").forEach(b=>{
+      b.disabled=true;
+      if(b.dataset.choice===q.answer)b.classList.add("correct");
+      else if(b.dataset.choice===answer.choice)b.classList.add("wrong");
+    });
+    $("fb"+n).textContent=answer.timeout?"超时未答 · +0":answer.correct?"答对了 · +"+score:"答错了 · +0";
+    $("fb"+n).className="side-feedback "+(answer.correct?"ri":"wr");
+    $("answer"+n).textContent="正确答案："+q.answer;
+  }
+  $("roundFeedback").textContent="本题已结算，即将自动切换";
+  $("roundFeedback").className="feedback right";
+  $("secondsLeft").textContent="—";$("countdown").classList.remove("urgent");$("timeFill").style.width="0%";
+  $("progFill").style.width=((state.qIndex+1)/10*100)+"%";
+  $("autoHint").textContent=state.qIndex===9?"1 秒后自动显示本关成绩…":"1 秒后自动进入下一题…";
+  updateHeader();
+  advanceTimer=setTimeout(nextQuestion,REVEAL_MS);
+}
+function nextQuestion(){
+  if(state.phase!=="feedback")return;
+  clearTimers();state.qIndex++;
+  if(state.qIndex>=state.questions.length){endRound();return;}
+  renderQuestion();
+}
+function updateHeader(){$("vp1-score").textContent=state.p1.score;$("vp2-score").textContent=state.p2.score;}
+function endRound(){
+  clearTimers();const lv=LEVELS[state.curLevel],p1=state.p1,p2=state.p2;
+  for(const n of [1,2]){
+    $("rscore"+n).textContent=state["p"+n].score;
+    $("rr"+n).textContent="答对 "+state.correctCounts[n-1]+" / 10 题";
+    $("rcard"+n).classList.remove("win");
+  }
+  let winner;
+  if(p1.score>p2.score){winner="🏆 "+p1.name+" 获胜！";$("rcard1").classList.add("win");}
+  else if(p2.score>p1.score){winner="🏆 "+p2.name+" 获胜！";$("rcard2").classList.add("win");}
+  else{winner="🤝 平局！";$("rcard1").classList.add("win");$("rcard2").classList.add("win");}
+  $("roundTitle").textContent=lv.name+" · 10 题完成";$("roundWinner").textContent=winner;
+  $("roundDetail").textContent=p1.name+" "+p1.score+" 分 vs "+p2.name+" "+p2.score+" 分";
+  const nb=$("nextLevelBtn");
+  if(state.curLevel===LEVELS.length-1){nb.textContent="查看总冠军 🏆";nb.onclick=showFinal;}
+  else{nb.textContent="下一关 ▶️";nb.onclick=()=>selectLevel(state.curLevel+1);}
+  showScreen("screen-roundend");
+}
+function showFinal(){
+  const [t1,t2]=state.totalScores;
+  $("finalWinner").textContent=t1===t2?"🤝 势均力敌，平局！":"🏆 总冠军："+(t1>t2?state.p1.name:state.p2.name)+"！";
+  $("fscore1").textContent=t1;$("fscore2").textContent=t2;
+  $("finalDetail").textContent=state.p1.name+" 累计 "+t1+" 分，"+state.p2.name+" 累计 "+t2+" 分";
+  $("fcard1").className="final-score-card"+(t1>t2?" win":"");$("fcard2").className="final-score-card"+(t2>t1?" win":"");
+  showScreen("screen-final");
+}
+function resetAll(){clearTimers();state.totalScores=[0,0];state.p1.score=state.p2.score=0;buildLevelGrid();showScreen("screen-levels");}
+document.addEventListener("keydown",event=>{
+  if(event.repeat||event.ctrlKey||event.altKey||event.metaKey||event.target.matches("input,select,textarea"))return;
+  if(state.phase!=="question")return;
+  const keys1=["1","2","3","4"],keys2=["7","8","9","0"];
+  const i1=keys1.indexOf(event.key),i2=keys2.indexOf(event.key);
+  if(i1<0&&i2<0)return;event.preventDefault();
+  const n=i1>=0?1:2,index=i1>=0?i1:i2;
+  const button=$("options"+n).children[index];if(button&&!button.disabled)button.click();
+});
+
+document.querySelectorAll('input[name="vocabUnit"]').forEach(input=>input.addEventListener("change",updateUnitChoices));
+$("unitSelectAll").addEventListener("change",()=>{
+  const checked=$("unitSelectAll").checked;
+  document.querySelectorAll('input[name="vocabUnit"]').forEach(input=>input.checked=checked);
+  updateUnitChoices();
+});
+restoreUnitChoices();
+</script>
+</body>
+</html>
